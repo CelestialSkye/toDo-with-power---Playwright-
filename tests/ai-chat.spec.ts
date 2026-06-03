@@ -1,66 +1,37 @@
-import { test, expect } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
+import { ChatPage } from './pages/chat.page';
+
+const test = base.extend<{ chatPage: ChatPage }>({
+  chatPage: async ({ page }, use) => {
+    const cp = new ChatPage(page);
+    await cp.goto();
+    await use(cp);
+  },
+});
 
 test.describe('AI Chat', () => {
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('https://list-locker.net/');
-    await expect(page.getByPlaceholder('Ask power anything')).toBeVisible();
+  test('Send empty message is blocked', async ({ chatPage }) => {
+    await expect(chatPage.sendButton).toBeDisabled();
   });
 
-  test('Send empty message is blocked', async ({ page }) => {
-    const sendButton = page.getByRole('button', { name: 'Send message' });
-    
-    await expect(sendButton).toBeDisabled();
+  test('Chat history visible', async ({ chatPage }) => {
+    for (let i = 1; i <= 5; i++) {
+      await chatPage.sendMessage(`Test message ${i}`);
+      await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
+    }
+    await expect(chatPage.page.getByText('Test message 1')).toBeVisible();
   });
 
-  test('Chat history visible', async ({ page }) => {
-    await page.waitForTimeout(3000);
-      await page.getByPlaceholder('Ask power anything').fill('Test message 1');
-      await page.getByRole('button', { name: 'Send message' }).click();
-      await page.waitForTimeout(3000);
-      await page.getByPlaceholder('Ask power anything').fill('Test message 2');
-      await page.getByRole('button', { name: 'Send message' }).click();
-      await page.waitForTimeout(3000);
-      await page.getByPlaceholder('Ask power anything').fill('Test message 3');
-      await page.getByRole('button', { name: 'Send message' }).click();
-      await page.waitForTimeout(3000);
-      await page.getByPlaceholder('Ask power anything').fill('Test message 4');
-      await page.getByRole('button', { name: 'Send message' }).click();
-      await page.waitForTimeout(3000);
-      await page.getByPlaceholder('Ask power anything').fill('Test message 5');
-      await page.getByRole('button', { name: 'Send message' }).click();
+  test('Messages appear in correct order', async ({ chatPage }) => {
+    for (let i = 1; i <= 3; i++) {
+      await chatPage.sendMessage(`Test message ${i}`);
+      await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
+    }
 
-        await expect (page.getByText('Test message 1')).toBeVisible({ timeout: 5000 });
-    
-    
+    await expect(chatPage.userMessages.nth(0)).toContainText('Test message 1');
+    await expect(chatPage.userMessages.nth(1)).toContainText('Test message 2');
+    await expect(chatPage.userMessages.nth(2)).toContainText('Test message 3');
   });
-
-test('Messages appear in correct order', async ({ page }) => {
-  const userMessage = page.locator('div.self-end');
-await page.waitForTimeout(3000);
-  // Send 3 messages
-  await page.getByPlaceholder('Ask power anything').fill('Test message 1');
-  await page.getByRole('button', { name: 'Send message' }).click();
-  await page.waitForTimeout(3000);
-  await expect(page.getByText('Test message 1')).toBeVisible({});
-
-  await page.getByPlaceholder('Ask power anything').fill('Test message 2');
-  await page.getByRole('button', { name: 'Send message' }).click();
-  await page.waitForTimeout(3000);
-  await expect(page.getByText('Test message 2')).toBeVisible({ });
-
-  await page.getByPlaceholder('Ask power anything').fill('Test message 3');
-  await page.getByRole('button', { name: 'Send message' }).click();
-  await page.waitForTimeout(3000);
-  await expect(page.getByText('Test message 3')).toBeVisible({});
-await page.waitForTimeout(3000);
-  // Verify order
-  await expect(userMessage.nth(0)).toContainText('Test message 1');
-  await expect(userMessage.nth(1)).toContainText('Test message 2');
-  await expect(userMessage.nth(2)).toContainText('Test message 3');
-});
-
-
-
 
 });
