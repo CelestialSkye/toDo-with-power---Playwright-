@@ -16,6 +16,7 @@ test.describe('AI Chat', () => {
   });
 
   test('Chat history visible', async ({ chatPage }) => {
+     await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 5; i++) {
       await chatPage.sendMessage(`Test message ${i}`);
       await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
@@ -24,6 +25,7 @@ test.describe('AI Chat', () => {
   });
 
   test('Messages appear in correct order', async ({ chatPage }) => {
+    await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 3; i++) {
       await chatPage.sendMessage(`Test message ${i}`);
       await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
