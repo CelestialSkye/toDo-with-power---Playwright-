@@ -11,11 +11,11 @@ const test = base.extend<{ chatPage: ChatPage }>({
 
 test.describe('AI Chat', () => {
 
-  test('Send empty message is blocked', async ({ chatPage }) => {
+  test('1# Send empty message is blocked', async ({ chatPage }) => {
     await expect(chatPage.sendButton).toBeDisabled();
   });
 
-  test('Chat history visible', async ({ chatPage }) => {
+  test('2# Chat history visible', async ({ chatPage }) => {
      await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 5; i++) {
       await chatPage.sendMessage(`Test message ${i}`);
@@ -24,7 +24,7 @@ test.describe('AI Chat', () => {
     await expect(chatPage.page.getByText('Test message 1')).toBeVisible();
   });
 
-  test('Messages appear in correct order', async ({ chatPage }) => {
+  test('3# Messages appear in correct order', async ({ chatPage }) => {
     await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 3; i++) {
       await chatPage.sendMessage(`Test message ${i}`);

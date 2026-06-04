@@ -13,14 +13,16 @@ const AI_RESPONSE_TIMEOUT = 15_000;
 
 test.describe('AI Actions', () => {
 
-  test('AI adds task with special characters', async ({ chatPage }) => {
+  test('1# AI adds task with special characters', async ({ chatPage }) => {
+    await chatPage.page.waitForTimeout(3000);
     await chatPage.sendMessage('!@#$%^&*');
     await expect(
       chatPage.page.locator('div[role="button"]').filter({ hasText: '!@#$%^&*()' })
     ).toBeVisible({ timeout: AI_RESPONSE_TIMEOUT });
   });
 
-  test('AI added task immediately appears', async ({ chatPage }) => {
+  test('2# AI added task immediately appears', async ({ chatPage }) => {
+    await chatPage.page.waitForTimeout(3000);
     await chatPage.sendMessage('Power add a task to buy milk');
     await expect(
       chatPage.page.locator('div[role="button"]').filter({ hasText: 'Power add a task to buy milk' })
