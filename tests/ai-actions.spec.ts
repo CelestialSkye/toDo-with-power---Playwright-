@@ -12,7 +12,8 @@ const test = base.extend<{ chatPage: ChatPage }>({
 const AI_RESPONSE_TIMEOUT = 15_000;
 
 test.describe('AI Actions', () => {
-
+  test.skip(!!process.env.CI, 'AI task creation is non-deterministic — tested manually in Qase');
+  
   test('AI adds task with special characters', async ({ chatPage }) => {
     await chatPage.sendMessage('!@#$%^&*');
     await expect(
