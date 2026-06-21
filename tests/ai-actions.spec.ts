@@ -12,8 +12,7 @@ const test = base.extend<{ chatPage: ChatPage }>({
 const AI_RESPONSE_TIMEOUT = 15_000;
 
 test.describe('AI Actions', () => {
-  test.skip(!!process.env.CI, 'AI task creation is non-deterministic — tested manually in Qase');
-  
+
   test('AI adds task with special characters', async ({ chatPage }) => {
     await chatPage.sendMessage('!@#$%^&*');
     await expect(
@@ -21,7 +20,8 @@ test.describe('AI Actions', () => {
     ).toBeVisible({ timeout: AI_RESPONSE_TIMEOUT });
   });
 
-  test('AI added task immediately appears', async ({ chatPage }) => {
+  test('2# AI added task immediately appears', async ({ chatPage }) => {
+    await chatPage.page.waitForTimeout(3000);
     await chatPage.sendMessage('Power add a task to buy milk');
     await expect(
       chatPage.page.locator('div[role="button"]').filter({ hasText: 'Power add a task to buy milk' })

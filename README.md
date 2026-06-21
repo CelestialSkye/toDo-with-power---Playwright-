@@ -1,4 +1,4 @@
-# Todo With Power QA
+# List Locker QA Suite
 
 Manual and automated testing suite for [List Locker](https://list-locker.net) —
 a todo app featuring Power from Chainsaw Man as an AI assistant.
