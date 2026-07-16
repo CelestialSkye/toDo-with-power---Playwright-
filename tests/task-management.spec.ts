@@ -12,11 +12,18 @@ const test = base.extend<{ taskPage: TaskPage }>({
 const LONG_TEXT =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
 
+
+// All tests share one authenticated session per run (see global-setup.ts),
+// so task data persists across tests and retries within a run — names must
+// be unique or text-based locators match leftovers from earlier tests.
+const uniqueTask = (label: string) => `${label} ${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+
 test.describe('Task Management - Add Task', () => {
 
   test('Adding a task', async ({ taskPage }) => {
-    await taskPage.addTask('Buy milk');
-    await expect(taskPage.taskText('Buy milk')).toBeVisible();
+    const task = uniqueTask('Buy milk');
+    await taskPage.addTask(task);
+    await expect(taskPage.taskText(task)).toBeVisible();
   });
 
   test('Adding an empty task is blocked', async ({ taskPage }) => {
@@ -32,19 +39,23 @@ test.describe('Task Management - Add Task', () => {
   });
 
   test('Add task with special characters', async ({ taskPage }) => {
-    await taskPage.addTask('!@#$%^&*()');
-    await expect(taskPage.taskText('!@#$%^&*()')).toBeVisible();
+    const task = uniqueTask('!@#$%^&*()');
+    await taskPage.addTask(task);
+    await expect(taskPage.taskText(task)).toBeVisible();
   });
 
   test('Add a very long name', async ({ taskPage }) => {
-    await taskPage.addTask(LONG_TEXT);
-    await expect(taskPage.taskText(LONG_TEXT)).toBeVisible();
+    const task = `${LONG_TEXT} ${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    await taskPage.addTask(task);
+    await expect(taskPage.taskText(task)).toBeVisible();
   });
 
   test('Add multiple tasks', async ({ taskPage }) => {
+    const runId = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
     for (let i = 1; i <= 5; i++) {
-      await taskPage.addTask(`Task ${i}`);
-      await expect(taskPage.taskText(`Task ${i}`)).toBeVisible();
+      const task = `Task ${runId} #${i}`;
+      await taskPage.addTask(task);
+      await expect(taskPage.taskText(task)).toBeVisible();
     }
   });
 
@@ -52,34 +63,38 @@ test.describe('Task Management - Add Task', () => {
 
 test.describe('Task Management - Delete Task', () => {
 
+  let task: string;
+
   test.beforeEach(async ({ taskPage }) => {
-    await taskPage.addTask('Buy milk');
+    task = uniqueTask('Buy milk');
+    await taskPage.addTask(task);
   });
 
   test('Delete single task', async ({ taskPage }) => {
-    await taskPage.deleteTask('Buy milk');
-    await expect(taskPage.taskText('Buy milk')).not.toBeVisible();
+    await taskPage.deleteTask(task);
+    await expect(taskPage.taskText(task)).not.toBeVisible();
   });
 
   test('Delete all tasks', async ({ taskPage }) => {
     await taskPage.deleteAll();
-    await expect(taskPage.taskText('Buy milk')).not.toBeVisible();
+    await expect(taskPage.taskText(task)).not.toBeVisible();
   });
 
   test('Deleted task does not reappear on refresh', async ({ taskPage }) => {
-    await taskPage.deleteTask('Buy milk');
-    await expect(taskPage.taskText('Buy milk')).not.toBeVisible();
+    await taskPage.deleteTask(task);
+    await expect(taskPage.taskText(task)).not.toBeVisible();
     await taskPage.reload();
-    await expect(taskPage.taskText('Buy milk')).not.toBeVisible();
+    await expect(taskPage.taskText(task)).not.toBeVisible();
   });
 
   test('Delete one of multiple tasks', async ({ taskPage }) => {
-    await taskPage.addTask('Buy food');
+    const otherTask = uniqueTask('Buy food');
+    await taskPage.addTask(otherTask);
 
-    await taskPage.deleteTask('Buy milk');
+    await taskPage.deleteTask(task);
 
-    await expect(taskPage.taskText('Buy milk')).not.toBeVisible();
-    await expect(taskPage.taskText('Buy food')).toBeVisible();
+    await expect(taskPage.taskText(task)).not.toBeVisible();
+    await expect(taskPage.taskText(otherTask)).toBeVisible();
   });
 
 });
@@ -87,14 +102,15 @@ test.describe('Task Management - Delete Task', () => {
 test.describe('Task Management - Complete Task', () => {
 
   test('Completed task persists after refresh', async ({ taskPage }) => {
-     await taskPage.page.waitForTimeout(3000);
-    await taskPage.addTask('Buy milk');
-         await taskPage.page.waitForTimeout(3000);
+    const task = uniqueTask('Buy milk');
+    await taskPage.page.waitForTimeout(3000);
+    await taskPage.addTask(task);
+    await taskPage.page.waitForTimeout(3000);
 
-    await expect(taskPage.taskText('Buy milk')).toBeVisible();
+    await expect(taskPage.taskText(task)).toBeVisible();
 
     await taskPage.page.locator('div[role="button"]')
-      .filter({ hasText: 'Buy milk' })
+      .filter({ hasText: task })
       .getByRole('button', { name: 'Complete Task' })
       .click();
     await taskPage.page.waitForTimeout(3000);
@@ -102,14 +118,14 @@ test.describe('Task Management - Complete Task', () => {
     await taskPage.reload();
     await expect(
       taskPage.page.locator('div[role="button"]')
-        .filter({ hasText: 'Buy milk' })
+        .filter({ hasText: task })
         .locator('div.rounded-full')
     ).toHaveClass(/bg-green-500/);
 
     await taskPage.reload();
     await expect(
       taskPage.page.locator('div[role="button"]')
-        .filter({ hasText: 'Buy milk' })
+        .filter({ hasText: task })
         .locator('div.rounded-full')
     ).toHaveClass(/bg-green-500/);
   });

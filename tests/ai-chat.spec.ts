@@ -16,24 +16,32 @@ test.describe('AI Chat', () => {
   });
 
   test('2# Chat history visible', async ({ chatPage }) => {
-     await chatPage.page.waitForTimeout(3000);
+    const runId = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 5; i++) {
-      await chatPage.sendMessage(`Test message ${i}`);
-      await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
+      await chatPage.sendMessage(`History test ${runId} #${i}`);
+      await expect(chatPage.page.getByText(`History test ${runId} #${i}`)).toBeVisible();
     }
-    await expect(chatPage.page.getByText('Test message 1')).toBeVisible();
+    await expect(chatPage.page.getByText(`History test ${runId} #1`)).toBeVisible();
   });
 
   test('3# Messages appear in correct order', async ({ chatPage }) => {
+    // Chat history persists across tests sharing the run's auth session
+    // (see global-setup.ts), so a unique run marker keeps assertions scoped
+    // to this test's own messages.
+    const runId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
     await chatPage.page.waitForTimeout(3000);
     for (let i = 1; i <= 3; i++) {
-      await chatPage.sendMessage(`Test message ${i}`);
-      await expect(chatPage.page.getByText(`Test message ${i}`)).toBeVisible();
+      await chatPage.sendMessage(`Order test ${runId} #${i}`);
+      await expect(chatPage.page.getByText(`Order test ${runId} #${i}`)).toBeVisible();
     }
 
-    await expect(chatPage.userMessages.nth(0)).toContainText('Test message 1');
-    await expect(chatPage.userMessages.nth(1)).toContainText('Test message 2');
-    await expect(chatPage.userMessages.nth(2)).toContainText('Test message 3');
+    const ownMessages = chatPage.userMessages.filter({ hasText: `Order test ${runId} #` });
+    await expect(ownMessages).toHaveCount(3);
+    await expect(ownMessages.nth(0)).toContainText(`#1`);
+    await expect(ownMessages.nth(1)).toContainText(`#2`);
+    await expect(ownMessages.nth(2)).toContainText(`#3`);
   });
 
 });
