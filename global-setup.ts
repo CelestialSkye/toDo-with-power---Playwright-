@@ -1,4 +1,4 @@
-import { chromium, firefox, webkit, type Browser, type FullConfig } from '@playwright/test';
+import { chromium, firefox, webkit, expect, type Browser, type FullConfig } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
@@ -17,6 +17,9 @@ async function probeAuth(browser: Browser, baseURL: string, storageState?: strin
   page.on('pageerror', (e) => consoleErrors.push(e.message));
   try {
     await page.goto(baseURL);
+    // The Add Task button stays disabled until Firebase auth completes —
+    // clicking before that silently drops the write.
+    await expect(page.getByRole('button', { name: 'Add Task' })).toBeEnabled({ timeout: 45_000 });
     const probeTask = `Auth warmup ${Date.now()}`;
     await page.getByPlaceholder('Enter something...').fill(probeTask);
     await page.getByRole('button', { name: 'Add Task' }).click();
@@ -26,13 +29,11 @@ async function probeAuth(browser: Browser, baseURL: string, storageState?: strin
       await context.storageState({ path: STATE_PATH, indexedDB: true });
     }
 
-    // Best-effort cleanup of the probe task.
-    await page
-      .getByTestId('task-item')
-      .filter({ hasText: probeTask })
-      .getByRole('button', { name: 'Delete' })
-      .click({ timeout: 5_000 })
-      .catch(() => {});
+    // Reset the shared test user's data so it doesn't grow run over run
+    // (the session is reused indefinitely via cache). Covers the probe task.
+    await page.getByRole('button', { name: 'Delete all' }).click({ timeout: 5_000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Clear history' }).click({ timeout: 5_000 }).catch(() => {});
+    await page.waitForTimeout(2_000);
 
     await context.close();
     return true;

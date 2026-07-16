@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 
 export class TaskPage {
   readonly page: Page;
@@ -15,14 +15,17 @@ export class TaskPage {
 
   async goto() {
     await this.page.goto('/');
-    await this.taskInput.waitFor();
-    await this.page.waitForTimeout(3000);
+    // The Add Task button stays disabled until Firebase auth completes —
+    // interacting earlier silently drops writes. The extra wait lets the
+    // Firestore snapshot deliver existing rows before tests count them.
+    await expect(this.addTaskButton).toBeEnabled({ timeout: 45_000 });
+    await this.page.waitForTimeout(2000);
   }
 
   async reload() {
     await this.page.reload();
-    await this.taskInput.waitFor();
-    await this.page.waitForTimeout(3000);
+    await expect(this.addTaskButton).toBeEnabled({ timeout: 45_000 });
+    await this.page.waitForTimeout(2000);
   }
 
   async addTask(text: string) {

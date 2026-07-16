@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 
 export class ChatPage {
   readonly page: Page;
@@ -15,7 +15,9 @@ export class ChatPage {
 
   async goto() {
     await this.page.goto('/');
-    await this.chatInput.waitFor();
+    // The chat input stays disabled until Firebase auth completes —
+    // sending earlier silently drops the message.
+    await expect(this.chatInput).toBeEnabled({ timeout: 45_000 });
   }
 
   async sendMessage(text: string) {
