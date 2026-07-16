@@ -1,5 +1,7 @@
 # List Locker QA Suite
 
+![Playwright Tests](https://github.com/CelestialSkye/toDo-with-power---Playwright-/actions/workflows/playwright.yml/badge.svg)
+
 Manual and automated testing suite for [List Locker](https://list-locker.net) —
 a todo app featuring Power from Chainsaw Man as an AI assistant.
 
