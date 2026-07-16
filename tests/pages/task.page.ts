@@ -10,7 +10,7 @@ export class TaskPage {
     this.page = page;
     this.taskInput = page.getByPlaceholder('Enter something...');
     this.addTaskButton = page.getByRole('button', { name: 'Add Task' });
-    this.taskItems = page.locator('[aria-label="task-item"]');
+    this.taskItems = page.getByTestId('task-item');
   }
 
   async goto() {
@@ -36,7 +36,7 @@ export class TaskPage {
   }
 
   taskItem(text: string): Locator {
-    return this.page.locator('div[role="button"]').filter({ hasText: text });
+    return this.page.getByTestId('task-item').filter({ hasText: text });
   }
 
   async deleteTask(text: string) {

@@ -109,25 +109,16 @@ test.describe('Task Management - Complete Task', () => {
 
     await expect(taskPage.taskText(task)).toBeVisible();
 
-    await taskPage.page.locator('div[role="button"]')
-      .filter({ hasText: task })
+    await taskPage.taskItem(task)
       .getByRole('button', { name: 'Complete Task' })
       .click();
     await taskPage.page.waitForTimeout(3000);
 
     await taskPage.reload();
-    await expect(
-      taskPage.page.locator('div[role="button"]')
-        .filter({ hasText: task })
-        .locator('div.rounded-full')
-    ).toHaveClass(/bg-green-500/);
+    await expect(taskPage.taskCompletionDot(task)).toHaveClass(/bg-green-500/);
 
     await taskPage.reload();
-    await expect(
-      taskPage.page.locator('div[role="button"]')
-        .filter({ hasText: task })
-        .locator('div.rounded-full')
-    ).toHaveClass(/bg-green-500/);
+    await expect(taskPage.taskCompletionDot(task)).toHaveClass(/bg-green-500/);
   });
 
 });

@@ -25,8 +25,9 @@ test.describe('AI Chat - rate limit handling', () => {
 
     await chatPage.sendMessage('Test message triggering rate limit');
 
+    // The message renders in both the chat log and the error banner.
     await expect(
-      chatPage.page.getByText(/needs a breather|too many messages sent too fast|rate limited/i)
+      chatPage.page.getByText(/needs a breather|too many messages sent too fast|rate limited/i).first()
     ).toBeVisible();
 
     await expect(
@@ -49,8 +50,9 @@ test.describe('AI Chat - rate limit handling', () => {
 
     await chatPage.sendMessage('Test message triggering quota exhaustion');
 
+    // The message renders in both the chat log and the error banner.
     await expect(
-      chatPage.page.getByText(/daily usage limit|out of energy/i)
+      chatPage.page.getByText(/daily usage limit|out of energy/i).first()
     ).toBeVisible();
 
     await expect(

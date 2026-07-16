@@ -1,15 +1,57 @@
-import { chromium, firefox, webkit, type FullConfig } from '@playwright/test';
+import { chromium, firefox, webkit, type Browser, type FullConfig } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
 const STATE_PATH = 'playwright/.auth/user.json';
 
+// Proves the session can actually write to Firestore: "No tasks yet" renders
+// even when auth fails, so adding a task and seeing it appear is the only
+// reliable auth signal.
+async function probeAuth(browser: Browser, baseURL: string, storageState?: string): Promise<boolean> {
+  const context = await browser.newContext(storageState ? { storageState } : {});
+  const page = await context.newPage();
+  const consoleErrors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors.push(m.text());
+  });
+  page.on('pageerror', (e) => consoleErrors.push(e.message));
+  try {
+    await page.goto(baseURL);
+    const probeTask = `Auth warmup ${Date.now()}`;
+    await page.getByPlaceholder('Enter something...').fill(probeTask);
+    await page.getByRole('button', { name: 'Add Task' }).click();
+    await page.getByText(probeTask).waitFor({ timeout: 30_000 });
+
+    if (!storageState) {
+      await context.storageState({ path: STATE_PATH, indexedDB: true });
+    }
+
+    // Best-effort cleanup of the probe task.
+    await page
+      .getByTestId('task-item')
+      .filter({ hasText: probeTask })
+      .getByRole('button', { name: 'Delete' })
+      .click({ timeout: 5_000 })
+      .catch(() => {});
+
+    await context.close();
+    return true;
+  } catch (e) {
+    console.error(`[global-setup] auth probe failed (${storageState ? 'cached session' : 'fresh sign-up'}): ${e}`);
+    for (const err of consoleErrors) console.error(`  browser console: ${err}`);
+    await context.close();
+    return false;
+  }
+}
+
 // The app signs every visitor in as a brand-new anonymous Firebase user.
 // Without a shared session, each test triggers its own anonymous sign-up and
 // Firebase's per-IP sign-up rate limit (auth/too-many-requests) starts
-// rejecting auth mid-suite, so Firestore writes silently fail and tests
-// flake. Signing in once here and reusing the session (Firebase stores auth
-// in IndexedDB) keeps the whole run at a single sign-up.
+// rejecting auth mid-suite — GitHub's shared runner IPs are frequently
+// already throttled by other projects' CI. So: reuse a previously saved
+// session when one exists (CI caches playwright/.auth between runs, meaning
+// steady-state runs perform ZERO sign-ups), and only sign up fresh when
+// there is no valid saved session.
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL as string;
   fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
@@ -21,51 +63,29 @@ export default async function globalSetup(config: FullConfig) {
 
   const browser = await engine.launch();
   try {
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      const context = await browser.newContext();
-      const page = await context.newPage();
-      const consoleErrors: string[] = [];
-      page.on('console', (m) => {
-        if (m.type() === 'error') consoleErrors.push(m.text());
-      });
-      page.on('pageerror', (e) => consoleErrors.push(e.message));
-      try {
-        await page.goto(baseURL);
-
-        // "No tasks yet" renders even when auth fails, so the only reliable
-        // proof the session is authenticated is a successful Firestore write:
-        // add a task and wait for it to appear.
-        const probeTask = `Auth warmup ${Date.now()}`;
-        await page.getByPlaceholder('Enter something...').fill(probeTask);
-        await page.getByRole('button', { name: 'Add Task' }).click();
-        await page.getByText(probeTask).waitFor({ timeout: 30_000 });
-
-        await context.storageState({ path: STATE_PATH, indexedDB: true });
-
-        // Best-effort cleanup of the probe task; the state is already saved.
-        await page
-          .locator('div[role="button"]')
-          .filter({ hasText: probeTask })
-          .getByRole('button', { name: 'Delete' })
-          .click({ timeout: 5_000 })
-          .catch(() => {});
-
-        await context.close();
+    if (fs.existsSync(STATE_PATH)) {
+      console.log('[global-setup] found saved auth session, validating...');
+      if (await probeAuth(browser, baseURL, STATE_PATH)) {
+        console.log('[global-setup] reusing saved session (no sign-up needed)');
         return;
-      } catch (e) {
-        lastError = e;
-        console.error(`[global-setup] warm-up attempt ${attempt} failed: ${e}`);
-        console.error(`[global-setup] browser console errors during attempt ${attempt}:`);
-        for (const err of consoleErrors) console.error(`  ${err}`);
-        await context.close();
-        if (attempt < 5) {
-          // Firebase's sign-up throttle needs time to cool down.
-          await new Promise((r) => setTimeout(r, 30_000 * attempt));
-        }
+      }
+      console.log('[global-setup] saved session invalid, falling back to fresh sign-up');
+      fs.rmSync(STATE_PATH, { force: true });
+    }
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      if (await probeAuth(browser, baseURL)) {
+        console.log(`[global-setup] fresh anonymous sign-up succeeded on attempt ${attempt}`);
+        return;
+      }
+      if (attempt < 5) {
+        // Firebase's sign-up throttle needs time to cool down.
+        await new Promise((r) => setTimeout(r, 30_000 * attempt));
       }
     }
-    throw new Error(`Anonymous auth warm-up failed after 5 attempts: ${lastError}`);
+    throw new Error(
+      'Anonymous auth warm-up failed after 5 attempts — Firebase is likely rate-limiting sign-ups from this IP (auth/too-many-requests).'
+    );
   } finally {
     await browser.close();
   }

@@ -17,7 +17,7 @@ test.describe('AI Actions', () => {
   test('AI adds task with special characters', async ({ chatPage }) => {
     await chatPage.sendMessage('!@#$%^&*');
     await expect(
-      chatPage.page.locator('div[role="button"]').filter({ hasText: '!@#$%^&*()' })
+      chatPage.page.getByTestId('task-item').filter({ hasText: '!@#$%^&*()' })
     ).toBeVisible({ timeout: AI_RESPONSE_TIMEOUT });
   });
 
@@ -25,7 +25,7 @@ test.describe('AI Actions', () => {
     await chatPage.page.waitForTimeout(3000);
     await chatPage.sendMessage('Power add a task to buy milk');
     await expect(
-      chatPage.page.locator('div[role="button"]').filter({ hasText: 'Power add a task to buy milk' })
+      chatPage.page.getByTestId('task-item').filter({ hasText: 'Power add a task to buy milk' })
     ).toBeVisible({ timeout: AI_RESPONSE_TIMEOUT });
   });
 

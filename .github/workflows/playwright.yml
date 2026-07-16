@@ -21,6 +21,11 @@ jobs:
       run: npm ci
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps ${{ matrix.browser }}
+    - name: Restore cached Firebase auth session
+      uses: actions/cache@v4
+      with:
+        path: playwright/.auth
+        key: firebase-auth-session-${{ matrix.browser }}-v1
     - name: Run Playwright tests
       run: npx playwright test --project=${{ matrix.browser }}
       env:
