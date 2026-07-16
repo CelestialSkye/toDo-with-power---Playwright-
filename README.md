@@ -20,8 +20,9 @@ to tasks and can create new ones through chat.
 ### Automated Testing
 
 - Playwright + TypeScript automation suite
-- Covers Task Management, AI Chat, and AI Actions
+- Covers Task Management, AI Chat, AI Actions, error/rate-limit handling, and accessibility
 - Tests run against live production environment
+- Cross-browser CI on every push/PR (Chromium + Firefox, run in a parallel matrix)
 
 ### Feature Areas Tested
 
@@ -29,22 +30,37 @@ Task Management → add, edit, delete, complete tasks
 AI Chat → message sending, order, history, empty input
 AI Actions → AI-triggered task creation, persistence
 Memory & Context → conversation history, refresh behavior
+Error Handling → chat API rate limiting (per-minute throttle and daily quota exhaustion)
+Accessibility → automated WCAG 2 A/AA scans (axe-core) on the main page
 
 ## Bugs Found
 
-| ID      | Title                                               | Severity | Status |
-| ------- | --------------------------------------------------- | -------- | ------ |
-| BUG-001 | API rate limit (429) not handled gracefully in chat | High     | Open   |
+| ID      | Title                                                                             | Severity | Status |
+| ------- | ---------------------------------------------------------------------------------- | -------- | ------ |
+| BUG-001 | API rate limit (429) not handled gracefully in chat                                | High     | Fixed  |
+| BUG-002 | Rate-limit message didn't scale wait time for daily quota vs. per-minute throttle   | Medium   | Fixed  |
+| BUG-003 | Quota-exhausted wording missing from the visible error banner (only reached the hidden chat log) | Medium | Fixed |
+| BUG-004 | Power avatar images missing `alt` text (WCAG 2 A, critical)                        | High     | Fixed  |
+| BUG-005 | Icon-only chat toggle button had no accessible name (WCAG 2 A, critical)           | High     | Fixed  |
+| BUG-006 | Chat placeholder text failed WCAG AA color contrast (4.39:1, needed 4.5:1)          | Medium   | Fixed  |
+
+Each fix above shipped with a Playwright regression test that failed against the bug and passes against the fix, verified live on production.
+
+## CI Performance
+
+Migrated GitHub Actions from a single sequential job (both browsers in one runner) to a parallel matrix (one job per browser). Measured wall-clock CI time dropped from 5m15s to 3m19s (~37% faster), with failures now isolated per browser instead of one shared job.
 
 ## Tools Used
 
-| Tool                    | Purpose                            |
-| ----------------------- | ---------------------------------- |
-| Playwright + TypeScript | Test automation                    |
-| Qase                    | Test case management and execution |
-| Jira                    | Bug tracking                       |
-| Browser DevTools        | Console monitoring, DOM inspection |
-| Postman                 | API exploration                    |
+| Tool                    | Purpose                             |
+| ----------------------- | ------------------------------------ |
+| Playwright + TypeScript | Test automation                     |
+| @axe-core/playwright    | Automated accessibility (WCAG) scans |
+| GitHub Actions          | CI, parallel cross-browser matrix   |
+| Qase                    | Test case management and execution  |
+| Jira                    | Bug tracking                        |
+| Browser DevTools        | Console monitoring, DOM inspection  |
+| Postman                 | API exploration                     |
 
 ## How to Run Automated Tests
 
@@ -68,11 +84,12 @@ npx playwright show-report
 tests/
 ├── task-management.spec.ts → CRUD operations
 ├── ai-chat.spec.ts → chat feature tests
-└── ai-actions.spec.ts → AI task creation tests
+├── ai-actions.spec.ts → AI task creation tests
+├── ai-chat-rate-limit.spec.ts → rate-limit and quota-exhaustion error handling
+└── accessibility.spec.ts → automated WCAG 2 A/AA scan (axe-core)
 
 ## Notes
 
 - AI-related tests are primarily manual due to non-deterministic AI responses
 - Memory limitation (5-10 messages) is by design to manage API token consumption
-- 429 rate limiting occurs when messages are sent in rapid succession
 - App tested on Chrome and Firefox, desktop and mobile viewports
